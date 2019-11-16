@@ -1,3 +1,10 @@
-## Ignorar archivo temporal ese de Word abierto
+## Ignórense archivos temporales de Word
 ~$*
 *.tmp
+
+## Ignórense residuos de compilación Python
+__pycache__/
+bould/
+__pypackages__/
+*.spyderproject
+*.spyproject
