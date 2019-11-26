@@ -24,10 +24,17 @@ def Main():
 
         # message received from server
         data = s.recv(1024)
-
+        data = data.decode('ascii')
+        #la condicion no es robusta, solo es para ejemplificar 
+        while ("?" in data):
+            print(data)
+            message = "A"+input("Presione enter para completar... ")
+            s.send(message.encode('ascii'))
+            data = s.recv(1024)
+            data = data.decode('ascii')
         # print the received message
         # here it would be a reverse of sent message
-        print('Received from the server :', str(data.decode('ascii')))
+        print('Received from the server :', data)
         print("EL MSG ES ", data)
         # ask the client whether he wants to continue
         ans = input('\nDo you want to continue(y/n) :')
