@@ -19,8 +19,8 @@ def threaded(c):
         data = c.recv(1024)
         while (print_lock.locked()):
             continue
-        #   EL DOBLE WHILE NO ES BELLO, PERO ES PARA QUE PASE UN DATO A LA VEZ Y NO SE CARGUE SOLO EL data
-        
+        #   EL DOBLE WHILE NO ES BELLO, PERO ES PARA QUE PASE UN DATO A LA VEZ Y NO SE SOBRECARGUE SOLO EL data
+
         #   LO DECODIFICAMOS PARA QUE LO PODAMOS USAR BIEN COMO STR
         data = data.decode('ascii')
         #   SI SE DA UNA CONDICION RANDOM PARA QUE SE HAGA LOCK
@@ -34,11 +34,6 @@ def threaded(c):
         if not data:
             print('Bye')
             #   HACEMOS UNA SALIDA GENERICA DEL SERVER
-            # lock released on exit
-            try:
-                print_lock.release()
-            except:
-                pass
             break
         
         print(data)
@@ -54,7 +49,7 @@ def threaded(c):
             print("NO\n")
 
         #   HAY QUE GENERAR AQUI EL MENSAJE DE RESPUESTA QUE SE ESPERA
-        data = "WOW" + data[::-1]
+        data = "WOW " + data
         #   ENVIAMOS EL MENSAJE DE RESPUESTA
         c.send(data.encode('ascii'))
 
