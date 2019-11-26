@@ -1,4 +1,4 @@
-PATH = /home/elsocket
+PATH = -s /home/elsocket
 
 server:
 	python3 server.py $(PATH)

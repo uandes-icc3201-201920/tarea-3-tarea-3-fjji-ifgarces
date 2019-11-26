@@ -1,3 +1,6 @@
+import sys
+from pycolor import PrintError
+
 def Get_Socket_Path():
 	_path = "/tmp/db.tuples.sock"
 	for k in range(len(sys.argv)):     # obteniendo ruta personalizada para el socket
