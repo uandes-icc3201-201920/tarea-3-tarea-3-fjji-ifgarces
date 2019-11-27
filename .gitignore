@@ -8,3 +8,6 @@ bould/
 __pypackages__/
 *.spyderproject
 *.spyproject
+
+## Ignórese el link para ir al repositorio manualmente
+*.url

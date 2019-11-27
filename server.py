@@ -2,17 +2,18 @@
 https://pymotw.com/3/socket/tcp.html
 """
 
-import sys, os, socket, numpy, threading
+import sys, os, socket, numpy, threading, _thread
 from pycolor import *
 from common import Get_Socket_Path
 
+LOCK = threading.Lock()
 
 server_path = Get_Socket_Path()
 
-listen_IP = "127.0.0.1"     # la que por defecto en los tutoriales de esto usan
+listen_IP = "127.0.0.8"
 listen_port = 6000
-BUFFER = b""
 BUFFER_SIZE = 4096    # N° bites máximo buffer (4 Kb)
+ENCODING = "utf-8"    # utf-8 para poner tildes y caracteres extraños
 
 DATABASE = []
 
@@ -27,8 +28,7 @@ def Get_Printable_DB(KV_list):
 		for item in KV_list:
 			temp.append()
 		stringed += tabulate.tabulate(temp)
-		del temp
-		
+	
 	except:
 		stringed += "Key\tValue\tValType\n"
 		for item in KV_list:
@@ -37,9 +37,10 @@ def Get_Printable_DB(KV_list):
 	return stringed
 
 
-"""
 def TEST():
+	print("Creating socket...")
 	SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   # inicializando socket de stream, por IP internet
+	print("Socket created")
 	SOCK.bind((listen_IP, listen_port))  # SOCK.bind(server_path) ...?
 	SOCK.listen()
 
@@ -49,11 +50,18 @@ def TEST():
 	print("Client address: ", client_address)
 
 	print("Sending hello...")
-	connection.sendall(b'Hello there, I\'m the server.')
+	connection.sendall("Hello there, I\'m the server.".encode("utf-8"))
 
 	BUFFER = connection.recv(BUFFER_SIZE)
+	BUFFER = BUFFER.decode("utf-8")
 	print("Received: ", BUFFER)
-"""
+	
+	SOCK.close()
+	print("I closed the socket SOCK, which was unnecessary I beleive. (it is not the same the client is speaking, it is the one it used to establish connection.)")
+
+if ("TESTMODE" in sys.argv):
+	TEST()
+	exit()
 
 def Initialize_Server():
 	DATABASE = { 0: 1001,
@@ -89,17 +97,24 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 
 
 def Attend_Client_Request():     # función que emplean los threads del servidor para cada cliente.
-	SOCK.listen()
-	
-	connection_socket, client_IP = SOCK.accept()    # se queda esperando a que un cliente se conecte.
-	
-	print("[test]", client_IP)
-	print("[test]", connection_socket)
-	print()
-	
-	while (True):    # ciclo para atender solicitudes del cliente hasta que se canse, o provoque error.
+	while (True):  # ciclo para atender solicitudes del cliente hasta que se canse, o provoque error.
+		while (LOCK.locked()): continue    # espera ocupada hasta que el cliente desbloquee el LOCK (deje de escribir en la base de datos).
+			
+		#SOCK.listen()
+		
+		#connection_socket, client_IP = SOCK.accept()    # se queda esperando a que un cliente se conecte.
+		
+		#print("[test]", client_IP)
+		#print("[test]", connection_socket)
+		#print()
+		
 		BUFFER = connection_socket.recv(BUFFER_SIZE)     # se queda esperando a recibir mensaje de cliente.
-		if (BUFFER == ""): break
+		BUFFER = BUFFER.decode(ENCODING)
+		while (LOCK.locked()): continue
+		
+		#if (BUFFER == ""):
+		#	print("[test] Received empty string. Finish now.")
+		#	break
 		print("[test] Server just received: " % BUFFER)
 		
 		if (CheckError_Syntax(BUFFER)):
@@ -193,8 +208,8 @@ def Attend_Client_Request():     # función que emplean los threads del servidor
 
 	connection_socket.close()
 
-server_threads = []
+#server_threads = []
 #...
-server_threads.append( threading.Thread(target=Process_Client_Request, args=()) )
-server_threads[-1].start()
+#server_threads.append( threading.Thread(target=Process_Client_Request, args=()) )
+#server_threads[-1].start()
 

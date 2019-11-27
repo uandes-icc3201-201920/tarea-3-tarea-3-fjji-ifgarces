@@ -1,5 +1,7 @@
 PATH = -s /home/elsocket
 
+# Por alguna razón no funciona nada. Con make compress, no reconoce comando tar, etc. Tonto makefail.
+
 server:
 	python3 server.py $(PATH)
 

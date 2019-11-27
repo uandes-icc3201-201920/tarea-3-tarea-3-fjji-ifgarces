@@ -15,23 +15,23 @@ def Main():
     s.connect((host, port))
 
     # message you send to server
-    message = input("Inserte msg")
+    message = input("Inserte mensaje: ")
     #message = "FJJI HERE!"
     while True:
 
         # message sent to server
-        s.send(message.encode('ascii'))
+        s.send(message.encode('utf-8'))
 
         # message received from server
         data = s.recv(1024)
-        data = data.decode('ascii')
+        data = data.decode('utf-8')
         #la condicion no es robusta, solo es para ejemplificar 
         while ("?" in data):
             print(data)
             message = "A"+input("Presione enter para completar... ")
-            s.send(message.encode('ascii'))
+            s.send(message.encode('utf-8'))
             data = s.recv(1024)
-            data = data.decode('ascii')
+            data = data.decode('utf-8')
         # print the received message
         # here it would be a reverse of sent message
         print('Received from the server :', data)

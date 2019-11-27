@@ -5,29 +5,27 @@ from common import Get_Socket_Path
 
 host_path = Get_Socket_Path()
 
-host_IP = "127.0.0.1"
+host_IP = "127.0.0.8"
 host_port = 6000
-host_URL = "theserver.com ??"   # ???
-BUFFER = b""
 BUFFER_SIZE = 4096
 
-SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-PrintInfo("Hi there")
-
-SOCK.close()
-
-"""
-def TEST()
+def TEST():
 	print("Connecting to server in IP address {} in port {}...".format(host_IP, host_port))
-	SOCK.connect((host_IP, host_port))
-
+	connection.connect((host_IP, host_port))
+	
 	print("Receiving expected hello...")
-	BUFFER = SOCK.recv(BUFFER_SIZE)
+	BUFFER = connection.recv(BUFFER_SIZE)
+	BUFFER = BUFFER.decode("utf-8")
 	print("Received from server: %s" % BUFFER)
-
+	
 	print("Sending hello back...")
-	SOCK.sendall(b'Hi, this is the client speaking.')
+	connection.sendall("Hi, this is the client speaking.".encode("utf-8"))
+	
+	connection.close()
+	print("I have closed the connection")
 
-	SOCK.close()
-"""
+if ("TESTMODE" in sys.argv):
+	TEST()
+	exit()
