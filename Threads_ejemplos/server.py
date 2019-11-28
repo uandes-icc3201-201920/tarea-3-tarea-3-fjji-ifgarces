@@ -88,6 +88,5 @@ def Main():
     s.close()
 
 
-Main()
-#if __name__ == '__main__':
-#    Main() 
+if __name__ == '__main__':
+    Main() 
