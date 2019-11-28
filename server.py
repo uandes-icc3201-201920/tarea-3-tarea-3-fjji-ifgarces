@@ -9,7 +9,6 @@ from common import Get_Socket_Path
 LOCK = threading.Lock()
 
 server_path = Get_Socket_Path()
-
 listen_IP = "127.0.0.8"
 listen_port = 6000
 BUFFER_SIZE = 4096    # N° bites máximo buffer (4 Kb)
@@ -19,29 +18,24 @@ DATABASE = { 0:   1001,
              1:   -15,
              3:   3.14159265,
              930: "p" }
-
+"""
 def TEST():
 	print("Creating socket...")
 	SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   # inicializando socket de stream, por IP internet
 	print("Socket created")
 	SOCK.bind((listen_IP, listen_port))  # SOCK.bind(server_path) ...?
 	SOCK.listen()
-
 	print("Waiting for connection...")
 	connection, client_address = SOCK.accept()
-
 	print("Client address: ", client_address)
-
 	print("Sending hello...")
 	connection.sendall("Hello there, I\'m the server.".encode("utf-8"))
-
 	BUFFER = connection.recv(BUFFER_SIZE).decode("utf-8")
 	print("Received: ", BUFFER)
-	
 	SOCK.close()
 	print("I closed the socket SOCK, which was unnecessary I beleive. (it is not the same the client is speaking, it is the one it used to establish connection.)")
-if ("TESTMODE" in sys.argv): TEST(); exit()
-
+if ("TEST" in sys.argv): PrintInfo("TEST MODE ENABLED"); TEST(); exit()
+"""
 
 def Get_Printable_DB(KV_list):
 	stringed = "\n"
@@ -70,47 +64,35 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 		valid_parmNames = ["Host port", "Server port",  # de connect
 		                   "Key", "Value", "ValType"]   # de varios
 		for item in _other_parameters:
-			_parm_name = item.split(":")[0]
+			try: _parm_name = item.split(":")[0]
+			except: return True
 			if (_parm_name in valid_parmNames):
 				valid_parmNames.remove(_parm_name)    # removiendo para verificar que no salga repetido un parámetro
 			else:     # parámetro repetido o no reconocido
 				return True
-
+	return False
 
 def Attend_Client_Request(conn):     # función que emplean los threads del servidor para cada cliente.
 	while (True):  # ciclo para atender solicitudes del cliente hasta que se canse, o provoque error.
 		while (LOCK.locked()): continue    # espera ocupada hasta que el cliente desbloquee el LOCK (deje de escribir en la base de datos).
-			
-		#SOCK.listen()
-		
-		#conn, client_IP = SOCK.accept()    # se queda esperando a que un cliente se conecte.
-		
-		#print("[test]", client_IP)
-		#print("[test]", conn)
-		#print()
 		
 		BUFFER = conn.recv(BUFFER_SIZE)     # se queda esperando a recibir mensaje de cliente.
 		BUFFER = BUFFER.decode(ENCODING)
 		while (LOCK.locked()): continue
 		
-		#if (BUFFER == ""):
-		#	print("[test] Received empty string. Finish now.")
-		#	break
-		print("[test] Server just received: " % BUFFER)
+		print("server thread #%d > Just received: \'%s\'" % (_thread.get_ident(), BUFFER))
 		
-		if (CheckError_Syntax(BUFFER)):
+		#if (CheckError_Syntax(BUFFER)):
+		if (False):
 			status_code = 200
 			status_msj  = "Bad request syntax"
 		
 		else:
 			lines = BUFFER.split("\n")
 			clientCMD = lines[0]
-			_host     = lines[1]
-			_CLIport  = lines[2]
-			_SRVport  = lines[3]
-			if (len(lines) > 4):
+			if (len(lines) > 1):
 				other_parms = {}       # other_parms es un diccionario con extras como "Key", "Value".
-				for k in range(4, len(lines)):
+				for k in range(1, len(lines)):
 					splitted = lines[k].split(":")
 					other_parms[splitted[0]] = splitted[1]
 			
@@ -171,13 +153,15 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 					try:
 						_key = int(other_parms["Key"])
 						assert(_key >= 0)
+						error = False
 					except:
 						status_code = 105
 						status_msj  = "Evil key"
-						...send...
-					status_code = 3
-					status_msj  = "Peek successful"
-					body        = other_parms["Key"] in DATABASE.keys()
+						error = True
+					if (not error):
+						status_code = 3
+						status_msj  = "Peek successful"
+						body        = other_parms["Key"] in DATABASE.keys()
 			
 			elif (clientCMD == "update"):
 				if ("Key" not in other_parms.keys()):
@@ -187,21 +171,22 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 				try:
 					_key = int(other_parms["Key"])
 					assert(_key >= 0)
+					error = False
 				except:
 					status_code = 105
 					status_msj  = "Evil key"
-					...send...
+					error = True
 				
-				if (other_parms["Key"] in DATABASE.keys()):   # llave en BD
-					LOCK.acquire()
-					DATABASE[other_parms["Key"]]
-					LOCK.release()
-						status_code = 
-						status_msj  = 
-				else:   # llave no existente en BD, error.
-					status_code = 
-					status_msj  = 
-				pass
+				if (not error):
+					if (other_parms["Key"] in DATABASE.keys()):   # llave en BD
+						LOCK.acquire()
+						DATABASE[other_parms["Key"]]
+						LOCK.release()
+						status_code = 5
+						status_msj  = "Update successful"
+					else:   # llave no existente en BD, error.
+						status_code = 107
+						status_msj  = "Bad key write"
 			
 			elif (clientCMD == "delete"): pass
 			
@@ -224,15 +209,14 @@ print("[test] Listening...")
 SOCK.listen(5)
 
 while (True):     # ciclo hasta que el cliente quiera salirse
-	print("Awaiting connection...")
+	print("server thread #%d > Awaiting connection..." % _thread.get_ident())
 	connection_socket, client_address = SOCK.accept()
-	PrintInfo("Connected successfuly with client with IP: %s and port: %d" % (client_address[0], client_address[1]))
+	PrintInfo("server thread #%d > Connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
 	
 	_thread.start_new_thread(Attend_Client_Request, (connection_socket,))
 SOCK.close()
 
-#server_threads = []
-#...
+#server_threads = []  ...
 #server_threads.append( threading.Thread(target=Process_Client_Request, args=()) )
 #server_threads[-1].start()
 
