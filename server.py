@@ -18,24 +18,6 @@ DATABASE = { 0:   1001,
              1:   -15,
              3:   3.14159265,
              930: "p" }
-"""
-def TEST():
-	print("Creating socket...")
-	SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   # inicializando socket de stream, por IP internet
-	print("Socket created")
-	SOCK.bind((listen_IP, listen_port))  # SOCK.bind(server_path) ...?
-	SOCK.listen()
-	print("Waiting for connection...")
-	connection, client_address = SOCK.accept()
-	print("Client address: ", client_address)
-	print("Sending hello...")
-	connection.sendall("Hello there, I\'m the server.".encode("utf-8"))
-	BUFFER = connection.recv(BUFFER_SIZE).decode("utf-8")
-	print("Received: ", BUFFER)
-	SOCK.close()
-	print("I closed the socket SOCK, which was unnecessary I beleive. (it is not the same the client is speaking, it is the one it used to establish connection.)")
-if ("TEST" in sys.argv): PrintInfo("TEST MODE ENABLED"); TEST(); exit()
-"""
 
 def Get_Printable_DB(KV_list):
 	stringed = "\n"
@@ -60,10 +42,10 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 	_msjlines = request_msj.split("\n")
 	if (len(_msjlines) == 1): return False
 	if (len(_msjlines) > 1):
-		_other_parameters = _msjlines[1:]
+		_extra_parms_lst = _msjlines[1:]
 		valid_parmNames = ["Host port", "Server port",  # de connect
 		                   "Key", "Value", "ValType"]   # de varios
-		for item in _other_parameters:
+		for item in _extra_parms_lst:
 			try: _parm_name = item.split(":")[0]
 			except: return True
 			if (_parm_name in valid_parmNames):
@@ -72,43 +54,50 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 				return True
 	return False
 
+
+""" ES NECESARIO CREAR UNA LISTA DE BUFFER, PARA TENER UN BUFFER POR CLIENTE, PARA QUE NO COLISIONEN """
+	
 def Attend_Client_Request(conn):     # función que emplean los threads del servidor para cada cliente.
+	# se inicia siempre y cuando se haya conectado al cliente, así que lo primero que hace es enviarle la confirmación:
+	conn.send( "Connection successful (code: 0)\nBody:".encode(ENCODING) )  # caso especial de respuesta, digamos.
+	
 	while (True):  # ciclo para atender solicitudes del cliente hasta que se canse, o provoque error.
 		while (LOCK.locked()): continue    # espera ocupada hasta que el cliente desbloquee el LOCK (deje de escribir en la base de datos).
 		
-		BUFFER = conn.recv(BUFFER_SIZE)     # se queda esperando a recibir mensaje de cliente.
-		BUFFER = BUFFER.decode(ENCODING)
+		BUFFER = conn.recv(BUFFER_SIZE).decode(ENCODING)     # se queda esperando a recibir mensaje de cliente.
 		while (LOCK.locked()): continue
 		
-		print("server thread #%d > Just received: \'%s\'" % (_thread.get_ident(), BUFFER))
+		print("server thread #%d just received: \'%s\'" % (_thread.get_ident(), BUFFER))
 		
 		#if (CheckError_Syntax(BUFFER)):
-		if (False):
-			status_code = 200
-			status_msj  = "Bad request syntax"
+		#	status_code = 200
+		#	status_msj  = "Bad request syntax"
 		
-		else:
+		#else:
+		if (True):  """ TEMPORAL """
 			lines = BUFFER.split("\n")
-			clientCMD = lines[0]
-			if (len(lines) > 1):
+			print("[test]", lines)
+			clientCMD = lines[0].lower()
+			if (len(lines) >= 2):
 				other_parms = {}       # other_parms es un diccionario con extras como "Key", "Value".
 				for k in range(1, len(lines)):
-					splitted = lines[k].split(":")
+					if (lines[k] == ""): continue
+					if (": " in lines[k]): splitted = lines[k].split(": ")     # posibilitando UN espacio entre nombre de parámetro y valor del parámetro
+					else: splitted = lines[k].split(":")                       # posibilitando que no haya espacio
 					other_parms[splitted[0]] = splitted[1]
 			
 			status_code = 0   # código_de_estado
 			status_msj  = ""  # mensaje_de_estado
-			body = ""    # mensaje_servidor
-			###if ( <se quiere enviar algo binario> ): status_msj = b""
+			body = ""         # mensaje_servidor
 			
-			if (clientCMD == "connect"):
+			if (clientCMD == "connect"):  # resuelto en el cliente porque antes de inicializar la conexión no puede pedirle al servidor conectarse. Se debe hacer en client.py
 				pass
 			
 			elif (clientCMD == "disconnect"):
 				conn.close()
 			
 			elif (clientCMD == "quit"):
-				return  # ... cerrar cliente
+				return   # CERRAR THREAD ==> RETORNAR
 			
 			elif (clientCMD == "insert"):
 				if ("Key" in other_parms.keys()):   # ~ insert(<key>, <value>)
@@ -205,14 +194,12 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   # inicializando socket de stream, por IP internet
 SOCK.bind((listen_IP, listen_port))
 
-print("[test] Listening...")
 SOCK.listen(5)
 
 while (True):     # ciclo hasta que el cliente quiera salirse
-	print("server thread #%d > Awaiting connection..." % _thread.get_ident())
+	print("server thread #%d awaiting connection..." % _thread.get_ident())
 	connection_socket, client_address = SOCK.accept()
-	PrintInfo("server thread #%d > Connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
-	
+	PrintInfo("server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
 	_thread.start_new_thread(Attend_Client_Request, (connection_socket,))
 SOCK.close()
 
