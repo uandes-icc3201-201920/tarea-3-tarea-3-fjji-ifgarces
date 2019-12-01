@@ -71,7 +71,7 @@ def main():
 		""" ahora espera el response del servidor... """
 		if (isConnected):
 			BUFFER = connection.recv(BUFFER_SIZE).decode(ENCODING)
-			PrintInfo("Client just received: \'%s\'" % BUFFER)
+			PrintInfo("Response received: \'%s\'" % BUFFER)
 
 if (__name__ == "__main__"):
     main()

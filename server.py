@@ -1,5 +1,5 @@
 """
-https://pymotw.com/3/socket/tcp.html
+Referencias: https://pymotw.com/3/socket/tcp.html
 """
 
 import sys, os, socket, numpy, threading, _thread
@@ -16,21 +16,25 @@ ENCODING = "utf-8"    # utf-8 para poner tildes y caracteres extraños
 
 DATABASE = { 0:   1001,
              1:   -15,
-             3:   3.14159265,
+             3:   3.14159,
              930: "p" }
 
-def Get_Printable_DB(KV_list):
+parlanchín_mode = True    # imprime lo que hace, si es True. Es como el flag genérico -v, -verbose
+
+
+def Get_Printable_DB():
 	stringed = "\n"
 	try:
 		import tabulate    # tratando de imprimir bonito con librería tabulate
 		temp = [("Key", "Value", "ValType")]
-		for item in KV_list:
-			temp.append(item)
+		for key in DATABASE.keys():
+			temp.append( (key, DATABASE[key], str(type(DATABASE[key])).split("\'")[1]) )
 		stringed += tabulate.tabulate(temp)
-	except:
-		stringed += "Key\tValue\tValType\n"
-		for item in KV_list:
-			stringed += str(item) + "\n"
+	except Exception as e:
+		print(e)
+		stringed += "\tKey\tValue\tValType\n"
+		for key in DATABASE.keys():
+			stringed += "\t%d\t%s\t%s\n" % (key, str(DATABASE[key]), str(type(DATABASE[key])).split("\'")[1])
 	return stringed
 
 
@@ -39,7 +43,7 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 		<command>\n
 		[other_parms]
 	"""
-	_msjlines = request_msj.split("\n")
+	_msjlines = request_msj.split("\n")[:-2]   # no pesca la última línea vacía
 	if (len(_msjlines) == 1): return False
 	if (len(_msjlines) > 1):
 		_extra_parms_lst = _msjlines[1:]
@@ -57,26 +61,32 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 
 """ ES NECESARIO CREAR UNA LISTA DE BUFFER, PARA TENER UN BUFFER POR CLIENTE, PARA QUE NO COLISIONEN """
 	
-def Attend_Client_Request(conn):     # función que emplean los threads del servidor para cada cliente.
-	# se inicia siempre y cuando se haya conectado al cliente, así que lo primero que hace es enviarle la confirmación:
+def Attend_Client_Request(conn):
+	"""
+	Función que emplean los threads del servidor para cada cliente.
+	"""
+	
+	# se inicia siempre y cuando se haya conectado al cliente, así que lo primero que hace es enviarle la confirmación de conexión
 	conn.send( "Connection successful (code: 0)\nBody:".encode(ENCODING) )  # caso especial de respuesta, digamos.
 	
 	while (True):  # ciclo para atender solicitudes del cliente hasta que se canse, o provoque error.
 		while (LOCK.locked()): continue    # espera ocupada hasta que el cliente desbloquee el LOCK (deje de escribir en la base de datos).
-		
 		BUFFER = conn.recv(BUFFER_SIZE).decode(ENCODING)     # se queda esperando a recibir mensaje de cliente.
 		while (LOCK.locked()): continue
 		
-		print("server thread #%d just received: \'%s\'" % (_thread.get_ident(), BUFFER))
+		status_code = 0   # código_de_estado
+		status_msj  = ""  # mensaje_de_estado
+		body = ""         # mensaje_servidor
 		
-		#if (CheckError_Syntax(BUFFER)):
-		#	status_code = 200
-		#	status_msj  = "Bad request syntax"
+		if (parlanchín_mode): print("Server thread #%d just received: \'%s\'" % (_thread.get_ident(), BUFFER))
 		
-		#else:
-		if (True):  """ TEMPORAL """
+		if (CheckError_Syntax(BUFFER)):
+			status_code = 200
+			status_msj  = "Bad request syntax"
+		
+		else:
 			lines = BUFFER.split("\n")
-			print("[test]", lines)
+			#if (parlanchín_mode): print("[test]", lines)
 			clientCMD = lines[0].lower()
 			if (len(lines) >= 2):
 				other_parms = {}       # other_parms es un diccionario con extras como "Key", "Value".
@@ -85,19 +95,18 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 					if (": " in lines[k]): splitted = lines[k].split(": ")     # posibilitando UN espacio entre nombre de parámetro y valor del parámetro
 					else: splitted = lines[k].split(":")                       # posibilitando que no haya espacio
 					other_parms[splitted[0]] = splitted[1]
-			
-			status_code = 0   # código_de_estado
-			status_msj  = ""  # mensaje_de_estado
-			body = ""         # mensaje_servidor
-			
+						
 			if (clientCMD == "connect"):  # resuelto en el cliente porque antes de inicializar la conexión no puede pedirle al servidor conectarse. Se debe hacer en client.py
 				pass
+			
 			
 			elif (clientCMD == "disconnect"):
 				conn.close()
 			
+			
 			elif (clientCMD == "quit"):
 				return   # CERRAR THREAD ==> RETORNAR
+			
 			
 			elif (clientCMD == "insert"):
 				if ("Key" in other_parms.keys()):   # ~ insert(<key>, <value>)
@@ -116,6 +125,7 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 					newkey = max(DATABASE.keys())+1
 					status_code = 1
 					status_msj  = "Insert successful"
+
 				LOCK.acquire()
 				DATABASE[newkey] = other_parms["Value"]
 				LOCK.release()
@@ -134,6 +144,7 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 					status_code = 106
 					status_msj  = "Bad key read"
 			
+			
 			elif (clientCMD == "peek"):
 				if ("Key" not in other_parms.keys()):
 					status_code = 201
@@ -151,6 +162,7 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 						status_code = 3
 						status_msj  = "Peek successful"
 						body        = other_parms["Key"] in DATABASE.keys()
+			
 			
 			elif (clientCMD == "update"):
 				if ("Key" not in other_parms.keys()):
@@ -176,17 +188,23 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 					else:   # llave no existente en BD, error.
 						status_code = 107
 						status_msj  = "Bad key write"
+					body = ""
 			
 			elif (clientCMD == "delete"): pass
 			
-			elif (clientCMD == "list"): pass
+			elif (clientCMD == "list"):
+				status_code = 4
+				status_msj  = "List successful"
+				body = Get_Printable_DB()
 			
 			else:
 				status_code = 104
-				status_msj = "Evil command"     # comando malvado.
+				status_msj  = "Evil command"     # comando malvado.
 		
+		LOCK.acquire()
 		answer = "%s (code: %d)\nBody:%s" % (status_msj, status_code, body)
 		conn.send( answer.encode(ENCODING) )
+		LOCK.release()
 
 	conn.close()
 
@@ -197,9 +215,9 @@ SOCK.bind((listen_IP, listen_port))
 SOCK.listen(5)
 
 while (True):     # ciclo hasta que el cliente quiera salirse
-	print("server thread #%d awaiting connection..." % _thread.get_ident())
+	if (parlanchín_mode): print("Server thread #%d awaiting connection..." % _thread.get_ident())
 	connection_socket, client_address = SOCK.accept()
-	PrintInfo("server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
+	if (parlanchín_mode): PrintInfo("Server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
 	_thread.start_new_thread(Attend_Client_Request, (connection_socket,))
 SOCK.close()
 

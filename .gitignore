@@ -11,3 +11,6 @@ __pypackages__/
 
 ## Ignórese el link para ir al repositorio manualmente
 *.url
+
+## Ignórese el informe anterior
+informe_parte1.pdf

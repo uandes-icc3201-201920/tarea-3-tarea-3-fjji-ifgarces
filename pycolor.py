@@ -14,7 +14,7 @@ def PrintError(text):
 
 def PrintInfo(text):
 	if (boring_user): print(text)
-	else: print(color.Fore.CYAN, text, color.Fore.RESET, sep="")
+	else: print(color.Fore.YELLOW, text, color.Fore.RESET, sep="")
 
 if (__name__ == "__main__"):
 	if (not boring_user):
