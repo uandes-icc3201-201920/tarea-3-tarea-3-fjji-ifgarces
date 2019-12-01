@@ -33,6 +33,7 @@ def main():
 		if (userCMD == "connect"):
 			if (isConnected):
 				print("Ud. ya se encuentra conectado al servidor.")
+				continue
 			
 			try:
 				if (instructions[1].lower() == "quick"): host_IP = "127.0.0.8"; host_port = 6000   # testing only!!
