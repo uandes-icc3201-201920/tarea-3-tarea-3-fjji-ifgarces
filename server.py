@@ -60,21 +60,29 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 def Attend_Client_Request(conn):     # función que emplean los threads del servidor para cada cliente.
 	# se inicia siempre y cuando se haya conectado al cliente, así que lo primero que hace es enviarle la confirmación:
 	conn.send( "Connection successful (code: 0)\nBody:".encode(ENCODING) )  # caso especial de respuesta, digamos.
-	
+
+	#	Dejamos el mensaje de entrada al servidor aca, para mencionar que thread es el que acogje a cual cliente
+	PrintInfo("server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (
+	_thread.get_ident(), client_address[0], client_address[1]))
 	while (True):  # ciclo para atender solicitudes del cliente hasta que se canse, o provoque error.
 		while (LOCK.locked()): continue    # espera ocupada hasta que el cliente desbloquee el LOCK (deje de escribir en la base de datos).
-		
-		BUFFER = conn.recv(BUFFER_SIZE).decode(ENCODING)     # se queda esperando a recibir mensaje de cliente.
+		try:
+			BUFFER = conn.recv(BUFFER_SIZE).decode(ENCODING)     # se queda esperando a recibir mensaje de cliente.
+		except:
+			print("The conection was interrupted by the client {0}, port {1}".format(client_address[0],client_address[1]))
+			conn.close()
+			return
 		while (LOCK.locked()): continue
-		
+
 		print("server thread #%d just received: \'%s\'" % (_thread.get_ident(), BUFFER))
-		
+
 		#if (CheckError_Syntax(BUFFER)):
 		#	status_code = 200
 		#	status_msj  = "Bad request syntax"
-		
+
 		#else:
-		if (True):  """ TEMPORAL """
+		if (True):
+			""" TEMPORAL """
 			lines = BUFFER.split("\n")
 			print("[test]", lines)
 			clientCMD = lines[0].lower()
@@ -93,11 +101,10 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 			if (clientCMD == "connect"):  # resuelto en el cliente porque antes de inicializar la conexión no puede pedirle al servidor conectarse. Se debe hacer en client.py
 				pass
 			
-			elif (clientCMD == "disconnect"):
+			elif (clientCMD == "disconnect" or clientCMD == "quit" ):
+				print ("Thread {2}:\tClient IP{0}, port {1} has been disconnected".format(client_address[0],client_address[1],_thread.get_ident()))
 				conn.close()
-			
-			elif (clientCMD == "quit"):
-				return   # CERRAR THREAD ==> RETORNAR
+				return
 			
 			elif (clientCMD == "insert"):
 				if ("Key" in other_parms.keys()):   # ~ insert(<key>, <value>)
@@ -186,7 +193,13 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 				status_msj = "Evil command"     # comando malvado.
 		
 		answer = "%s (code: %d)\nBody:%s" % (status_msj, status_code, body)
-		conn.send( answer.encode(ENCODING) )
+		try:
+			conn.send( answer.encode(ENCODING) )
+		except:
+			print("The conection was interrupted by the client {0}, port {1}".format(client_address[0],client_address[1]))
+			conn.close()
+			return
+
 
 	conn.close()
 
@@ -197,9 +210,11 @@ SOCK.bind((listen_IP, listen_port))
 SOCK.listen(5)
 
 while (True):     # ciclo hasta que el cliente quiera salirse
-	print("server thread #%d awaiting connection..." % _thread.get_ident())
+
+	print ("Server is awaiting new conection...")
+	#print("server thread #%d awaiting connection..." % _thread.get_ident()) #esta linea hace una llamada de un thread que no esta parado ( es el thread principal, por lo que no necesitamos esa info)
 	connection_socket, client_address = SOCK.accept()
-	PrintInfo("server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
+	#PrintInfo("Server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
 	_thread.start_new_thread(Attend_Client_Request, (connection_socket,))
 SOCK.close()
 
