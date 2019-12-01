@@ -14,6 +14,16 @@ listen_port = 6000
 BUFFER_SIZE = 4096    # N° bites máximo buffer (4 Kb)
 ENCODING = "utf-8"    # utf-8 para poner tildes y caracteres extraños
 
+print("Setting server...\n")
+
+setting = input("Want default settings?  \n\tlisten_IP = '127.0.0.8' \n\tlisten_port = 6000\n Press 'C' for change them or just enter to keep them: ")
+
+if (setting.lower() == "c"):
+	listen_IP = input("Choose IP")
+	listen_port = int(input("Choose port"))
+
+print("\nSetting for server are: \nIP: {0}\nPort: {1}\n".format(listen_IP,listen_port))
+
 DATABASE = { 0:   1001,
              1:   -15,
              3:   3.14159265,
@@ -126,8 +136,8 @@ def Attend_Client_Request(conn):     # función que emplean los threads del serv
 				LOCK.acquire()
 				DATABASE[newkey] = other_parms["Value"]
 				LOCK.release()
-					
-			
+
+
 			elif (clientCMD == "get"):   # ~ get(<key>)
 				if (not "Key" in other_parms.keys()):
 					status_code = 201
