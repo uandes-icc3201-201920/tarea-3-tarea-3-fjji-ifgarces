@@ -31,7 +31,7 @@ def Get_Printable_DB():
 			temp.append( (key, DATABASE[key], str(type(DATABASE[key])).split("\'")[1]) )
 		stringed += tabulate.tabulate(temp)
 	except Exception as e:
-		print(e)
+		#print("[TEST]", e)
 		stringed += "\tKey\tValue\tValType\n"
 		for key in DATABASE.keys():
 			stringed += "\t%d\t%s\t%s\n" % (key, str(DATABASE[key]), str(type(DATABASE[key])).split("\'")[1])
@@ -105,6 +105,7 @@ def Attend_Client_Request(conn):
 			
 			
 			elif (clientCMD == "quit"):
+				if (parlanchín_mode): PrintInfo("Client disconnected from server thread #%d" % (_thread.get_ident())
 				return   # CERRAR THREAD ==> RETORNAR
 			
 			

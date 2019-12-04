@@ -40,7 +40,9 @@ def main():
 				else:
 					host_IP = instructions[1].split(": ")[1]
 					if (host_IP.lower() == "default"): host_IP = "127.0.0.8"
-					host_port = int( instructions[2].split(": ")[1] )
+					host_port = instructions[2].split(": ")[1]
+					if (host_port.lower() == "default"): host_port = 6000
+					else: host_port = int(host_port)
 				connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				connection.connect((host_IP, host_port))
 				isConnected = True
@@ -72,7 +74,8 @@ def main():
 		""" ahora espera el response del servidor... """
 		if (isConnected):
 			BUFFER = connection.recv(BUFFER_SIZE).decode(ENCODING)
-			PrintInfo("Response received: \'%s\'" % BUFFER)
+			print("Response received: ", end="")
+			PrintInfo("\'%s\'" % BUFFER)
 
 if (__name__ == "__main__"):
     main()
