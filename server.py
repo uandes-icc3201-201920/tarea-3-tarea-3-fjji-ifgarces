@@ -4,12 +4,11 @@ Referencias: https://pymotw.com/3/socket/tcp.html
 
 import sys, os, socket, numpy, threading, _thread
 from pycolor import *
-from common import Get_Socket_Path
+from common import Get_Wanted_IP
 
 LOCK = threading.Lock()
 
-server_path = Get_Socket_Path()
-listen_IP = "127.0.0.8"
+listen_IP = Get_Wanted_IP()
 listen_port = 6000
 BUFFER_SIZE = 4096    # N° bites máximo buffer (4 Kb)
 ENCODING = "utf-8"    # utf-8 para poner tildes y caracteres extraños
@@ -102,15 +101,19 @@ def Attend_Client_Request(conn):
 			
 			elif (clientCMD == "disconnect"):
 				conn.close()
+				return    # ??
 			
 			
 			elif (clientCMD == "quit"):
-				if (parlanchín_mode): PrintInfo("Client disconnected from server thread #%d" % (_thread.get_ident())
+				try: conn.close()
+				except: pass
+				if (parlanchín_mode):
+					PrintInfo("Client disconnected from server thread #%d" % (_thread.get_ident()))
 				return   # CERRAR THREAD ==> RETORNAR
 			
 			
 			elif (clientCMD == "insert"):
-				if ("Key" in other_parms.keys()):   # ~ insert(<key>, <value>)
+				if ("Key" in other_parms.keys()):  # viendo que el request tenga el parámetro "Key"
 					if (type(other_parms["Key"] != int) or other_parms["Key"] < 0):     # llave mala
 						status_code = 105
 						status_msj  = "Evil key"
@@ -133,17 +136,27 @@ def Attend_Client_Request(conn):
 					
 			
 			elif (clientCMD == "get"):   # ~ get(<key>)
-				if (not "Key" in other_parms.keys()):
+				if ("Key" not in other_parms.keys()):
 					status_code = 201
 					status_msj  = "Bad parameters"
-			
-				if (other_parms["Key"] in DATABASE.keys()):
-					status_code = 2
-					status_msj  = "Get successful"
-					body        = DATABASE[other_parms["Key"]]
-				else:   # llave no existente en BD, error.
-					status_code = 106
-					status_msj  = "Bad key read"
+					
+				else:
+					try:
+						_key = int(other_parms["Key"])
+						assert(_key >= 0)
+						error = False
+					except:
+						status_code = 105
+						status_msj  = "Evil key"
+						error = True
+					if (not error):			
+						if (_key in DATABASE.keys()):
+							status_code = 2
+							status_msj  = "Get successful"
+							body        = str( DATABASE[_key] )
+						else:   # llave no existente en BD, error.
+							status_code = 106
+							status_msj  = "Bad key read"
 			
 			
 			elif (clientCMD == "peek"):
@@ -162,36 +175,60 @@ def Attend_Client_Request(conn):
 					if (not error):
 						status_code = 3
 						status_msj  = "Peek successful"
-						body        = other_parms["Key"] in DATABASE.keys()
+						body        = str( _key in DATABASE.keys() )
 			
 			
 			elif (clientCMD == "update"):
-				if ("Key" not in other_parms.keys()):
-					status_code = 106
-					status_msj  = "Bad key read"
+				if ("Key" not in other_parms.keys() or "Value" not in other_parms.keys()):
+					status_code = 201
+					status_msj  = "Bad parameters"
+				else:
+					try:
+						_key = int(other_parms["Key"])
+						assert(_key >= 0)
+						error = False
+					except:
+						status_code = 105
+						status_msj  = "Evil key"
+						error = True
 				
-				try:
-					_key = int(other_parms["Key"])
-					assert(_key >= 0)
-					error = False
-				except:
-					status_code = 105
-					status_msj  = "Evil key"
-					error = True
-				
-				if (not error):
-					if (other_parms["Key"] in DATABASE.keys()):   # llave en BD
-						LOCK.acquire()
-						DATABASE[other_parms["Key"]]
-						LOCK.release()
-						status_code = 5
-						status_msj  = "Update successful"
-					else:   # llave no existente en BD, error.
-						status_code = 107
-						status_msj  = "Bad key write"
-					body = ""
+					if (not error):
+						if (_key in DATABASE.keys()):   # llave en BD
+							LOCK.acquire()
+							DATABASE[other_parms["Key"]] = other_parms["Value"]
+							LOCK.release()
+							status_code = 5
+							status_msj  = "Update successful"
+						else:   # llave no existente en BD, error.
+							status_code = 107
+							status_msj  = "Bad key write"
+						body = ""
 			
-			elif (clientCMD == "delete"): pass
+			elif (clientCMD == "delete"):
+				if ("Key" not in other_parms.keys()):
+					status_code = 201
+					status_msj  = "Bad parameters"
+				else:
+					try:
+						_key = int(other_parms["Key"])
+						assert(_key >= 0)
+						error = False
+					except:
+						status_code = 105
+						status_msj  = "Evil key"
+						error = True
+					
+					if (not error):
+						if (_key in DATABASE.keys()):   # llave en BD
+							LOCK.acquire()
+							del DATABASE[_key]
+							LOCK.release()
+							status_code = 6
+							status_msj  = "Delete successful"
+						else:   # llave no existente en BD, error.
+							status_code = 107
+							status_msj  = "Bad key write"
+						body = ""
 			
 			elif (clientCMD == "list"):
 				status_code = 4
@@ -203,7 +240,7 @@ def Attend_Client_Request(conn):
 				status_msj  = "Evil command"     # comando malvado.
 		
 		LOCK.acquire()
-		answer = "%s (code: %d)\nBody:%s" % (status_msj, status_code, body)
+		answer = "%s (code: %d)\nBody: %s" % (status_msj, status_code, body)
 		conn.send( answer.encode(ENCODING) )
 		LOCK.release()
 
@@ -216,7 +253,7 @@ SOCK.bind((listen_IP, listen_port))
 SOCK.listen(5)
 
 while (True):     # ciclo hasta que el cliente quiera salirse
-	if (parlanchín_mode): print("Server thread #%d awaiting connection..." % _thread.get_ident())
+	if (parlanchín_mode): print("Server thread #%d awaiting connection..." % (_thread.get_ident()))
 	connection_socket, client_address = SOCK.accept()
 	if (parlanchín_mode): PrintInfo("Server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
 	_thread.start_new_thread(Attend_Client_Request, (connection_socket,))
