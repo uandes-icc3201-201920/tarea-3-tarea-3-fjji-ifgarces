@@ -1,13 +1,11 @@
 import sys, os, socket
 from pycolor import *
-from common import Get_Socket_Path
 
 def ShowHelp():
 	PrintInfo("[Ayuda]\nDigite la instrucción del cliente de acuerdo al protocolo definido (request). Para terminar de escribir y enviar el mensaje, ingrese una línea vacía.\n")
 
 
 def main():
-	host_path = Get_Socket_Path()
 	#host_IP = "127.0.0.8"
 	#host_port = 6000
 	#client_port = 6891  # UNUSED (dado por el S.O.)
