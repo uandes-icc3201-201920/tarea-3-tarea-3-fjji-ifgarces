@@ -18,7 +18,8 @@ DATABASE = { 0:   1001,
              3:   3.14159,
              930: "p" }
 
-parlanchín_mode = True    # imprime lo que hace, si es True. Es como el flag genérico -v, -verbose
+parlanchín_mode = True    # imprime lo que hace, si es cierto.
+# parlanchín_mode = ("-v" in sys.argv) or ("-verbose" in sys.argv)    # como de costumbre, el flag genérico para que el programa diga lo que está haciendo.
 
 
 def Get_Printable_DB():
@@ -29,8 +30,7 @@ def Get_Printable_DB():
 		for key in DATABASE.keys():
 			temp.append( (key, DATABASE[key], str(type(DATABASE[key])).split("\'")[1]) )
 		stringed += tabulate.tabulate(temp)
-	except Exception as e:
-		#print("[TEST]", e)
+	except:
 		stringed += "\tKey\tValue\tValType\n"
 		for key in DATABASE.keys():
 			stringed += "\t%d\t%s\t%s\n" % (key, str(DATABASE[key]), str(type(DATABASE[key])).split("\'")[1])
@@ -46,7 +46,7 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 	if (len(_msjlines) == 1): return False
 	if (len(_msjlines) > 1):
 		_extra_parms_lst = _msjlines[1:]
-		valid_parmNames = ["Host port", "Server port",  # de connect
+		valid_parmNames = ["Host port", "Server port",  # de comando 'connect'
 		                   "Key", "Value", "ValType"]   # de varios
 		for item in _extra_parms_lst:
 			try: _parm_name = item.split(":")[0]
@@ -58,8 +58,14 @@ def CheckError_Syntax(request_msj):     # si está mal, retorna True
 	return False
 
 
-""" ES NECESARIO CREAR UNA LISTA DE BUFFER, PARA TENER UN BUFFER POR CLIENTE, PARA QUE NO COLISIONEN """
-	
+""" [!] POSIBLE CONDICIÓN DE CARRERA POR 'BUFFER':
+        Si el thread server t1 procesa instrucción y llena el buffer,
+		es posible que ahora le toque a otro thread t2 y modifique el buffer,
+		y reanude t1 con el buffer modificado por t2, y le envíe cualquier
+		cosa al cliente.
+		Será necesario poner un LOCK para todo Attend_Client_Request()?
+"""
+
 def Attend_Client_Request(conn):
 	"""
 	Función que emplean los threads del servidor para cada cliente.
@@ -250,16 +256,13 @@ def Attend_Client_Request(conn):
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   # inicializando socket de stream, por IP internet
 SOCK.bind((listen_IP, listen_port))
 
-SOCK.listen(5)
+SOCK.listen(5)    # [?] Necesario argumento de listen?
 
 while (True):     # ciclo hasta que el cliente quiera salirse
-	if (parlanchín_mode): print("Server thread #%d awaiting connection..." % (_thread.get_ident()))
+	if (parlanchín_mode): print("Server thread #%d awaiting connection..." % _thread.get_ident())
 	connection_socket, client_address = SOCK.accept()
 	if (parlanchín_mode): PrintInfo("Server thread #%d connected successfuly with client with IP %s on port %d (given by OS)" % (_thread.get_ident(), client_address[0], client_address[1]))
 	_thread.start_new_thread(Attend_Client_Request, (connection_socket,))
 SOCK.close()
 
-#server_threads = []  ...
-#server_threads.append( threading.Thread(target=Process_Client_Request, args=()) )
-#server_threads[-1].start()
 
