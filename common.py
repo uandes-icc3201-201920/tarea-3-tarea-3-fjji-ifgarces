@@ -4,7 +4,7 @@ from pycolor import PrintError
 """
 ---- INFO ----
   El enunciado decía que la flag indicaba ruta (i.e. /tmp/etc.) pero eso no tiene sentido,
-  así que asumo que se equivocaron. La ruta no interesa para internet. Al menos en este caso, no.
+  así que asumo que se equivocaron. La ruta no interesa para internet. Al menos en este caso no.
 """
 
 def Get_Wanted_IP():
@@ -15,5 +15,6 @@ def Get_Wanted_IP():
 				_ip = sys.argv[k+1]
 				break
 			else:
-				PrintError("[!] Error: flag \'%s\' no reconocido." % cmdarg)
+				PrintError("[!] Error: flag \'%s\' no reconocido." % sys.argv[k])
+				exit(1)
 	return _ip

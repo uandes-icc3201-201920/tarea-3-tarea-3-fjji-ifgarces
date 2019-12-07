@@ -1,0 +1,15 @@
+connect
+Server IP: default
+Server port: 6000
+
+peek
+Key: 0
+
+list
+
+un comando inválido
+con '\ mala sintaxis:xxxxxxxxx
+
+disconnect
+
+quit

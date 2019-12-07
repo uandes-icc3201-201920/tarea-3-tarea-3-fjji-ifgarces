@@ -1,6 +1,7 @@
 ## Ignórense archivos temporales de Word
 ~$*
 *.tmp
+*.docx
 
 ## Ignórense residuos de compilación Python
 __pycache__/
@@ -12,6 +13,3 @@ __pypackages__/
 ## Ignórese el link para ir al repositorio manualmente
 *.url
 *.lnk
-
-## Ignórese el informe anterior
-*parte1.pdf
